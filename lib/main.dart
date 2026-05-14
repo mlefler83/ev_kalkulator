@@ -32,8 +32,8 @@ class _AkkuKalkulatorState extends State<AkkuKalkulator> {
   String _eredmeny = "0 óra 0 perc";
   String _befejezesIdo = "--:--";
   String _energiaMennyiseg = "0.00 kWh";
-  String _co2Megtakaritas = "0.00 kg"; // Új változó
-  Color _accentColor = Colors.greenAccent;
+  String _co2Megtakaritas = "0.00 kg";
+  final Color _fixedAccentColor = Colors.greenAccent; // Egységes zöld szín
 
   void _szamoldKi() {
     double? jelenlegi = double.tryParse(_szazalekController.text.replaceFirst(',', '.'));
@@ -47,12 +47,6 @@ class _AkkuKalkulatorState extends State<AkkuKalkulator> {
     double bruttoKW = (230 * amperErtek * fazisokSzama) / 1000.0;
     double nettoKW = bruttoKW * 0.9;
 
-    setState(() {
-      if (_celSzazalek <= 80) _accentColor = Colors.greenAccent;
-      else if (_celSzazalek <= 95) _accentColor = Colors.blueAccent;
-      else _accentColor = Colors.amberAccent;
-    });
-
     if (jelenlegi >= _celSzazalek) {
       setState(() {
         _eredmeny = "KÉSZ";
@@ -65,8 +59,6 @@ class _AkkuKalkulatorState extends State<AkkuKalkulator> {
 
     double hianyzoKwh = ((_celSzazalek - jelenlegi) / 100.0) * kapacitas;
     double idoOra = hianyzoKwh / nettoKW;
-    
-    // CO2 számítás: ~0.18 kg megtakarítás / betöltött kWh
     double co2kg = hianyzoKwh * 0.18;
 
     DateTime befejezes = DateTime.now().add(Duration(minutes: (idoOra * 60).round()));
@@ -95,13 +87,12 @@ class _AkkuKalkulatorState extends State<AkkuKalkulator> {
           padding: EdgeInsets.symmetric(horizontal: 20, vertical: 50),
           child: Column(
             children: [
-              // Fő Eredmény Kártya
               _buildGlassCard(
                 child: Column(
                   children: [
                     Text("TÖLTÉSI IDŐTARTAM", style: TextStyle(color: Colors.white60, fontSize: 12, letterSpacing: 2)),
                     SizedBox(height: 15),
-                    Text(_eredmeny, style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold, color: _accentColor, shadows: [Shadow(color: _accentColor.withOpacity(0.5), blurRadius: 20)])),
+                    Text(_eredmeny, style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold, color: _fixedAccentColor, shadows: [Shadow(color: _fixedAccentColor.withOpacity(0.5), blurRadius: 20)])),
                     SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -126,7 +117,6 @@ class _AkkuKalkulatorState extends State<AkkuKalkulator> {
               
               SizedBox(height: 15),
 
-              // ÚJ: Környezetvédelmi kártya
               _buildGlassCard(
                 color: Colors.green.withOpacity(0.1),
                 child: Row(
@@ -170,14 +160,14 @@ class _AkkuKalkulatorState extends State<AkkuKalkulator> {
                     Text("Cél töltöttség", style: TextStyle(color: Colors.white60, fontSize: 13)),
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                      decoration: BoxDecoration(color: _accentColor.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
-                      child: Text("${_celSzazalek.round()}%", style: TextStyle(color: _accentColor, fontWeight: FontWeight.bold)),
+                      decoration: BoxDecoration(color: _fixedAccentColor.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
+                      child: Text("${_celSzazalek.round()}%", style: TextStyle(color: _fixedAccentColor, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
                 Slider(
                   value: _celSzazalek, min: 50, max: 100, divisions: 10,
-                  activeColor: _accentColor,
+                  activeColor: _fixedAccentColor,
                   onChanged: (v) => setState(() => _celSzazalek = v),
                 ),
               ]),
@@ -186,7 +176,7 @@ class _AkkuKalkulatorState extends State<AkkuKalkulator> {
               ElevatedButton(
                 onPressed: _szamoldKi,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _accentColor,
+                  backgroundColor: _fixedAccentColor,
                   foregroundColor: Colors.black87,
                   minimumSize: Size(double.infinity, 65),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -201,7 +191,6 @@ class _AkkuKalkulatorState extends State<AkkuKalkulator> {
     );
   }
 
-  // Segédmetódus az üveghatású kártyákhoz
   Widget _buildGlassCard({required Widget child, Color? color}) {
     return Container(
       width: double.infinity,
@@ -259,7 +248,7 @@ class _AkkuKalkulatorState extends State<AkkuKalkulator> {
         filled: true,
         fillColor: Colors.black26,
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white10)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _accentColor)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _fixedAccentColor)),
       ),
     );
   }
