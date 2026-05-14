@@ -9,7 +9,6 @@ class EVKalkulatorApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        primarySwatch: Colors.blue,
         scaffoldBackgroundColor: Color(0xFF121212),
         cardTheme: CardThemeData( // Itt változtattuk meg!
           color: Color(0xFF1E1E1E),
@@ -76,12 +75,6 @@ class _AkkuKalkulatorState extends State<AkkuKalkulator> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("EV Töltés Kalkulátor"),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(20.0),
         child: Column(
