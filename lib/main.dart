@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 void main() => runApp(EVKalkulatorApp());
 
@@ -9,12 +10,7 @@ class EVKalkulatorApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: Color(0xFF121212),
-        cardTheme: CardThemeData( // Itt változtattuk meg!
-          color: Color(0xFF1E1E1E),
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        ),
+        scaffoldBackgroundColor: Color(0xFF0F172A),
       ),
       home: AkkuKalkulator(),
     );
@@ -33,17 +29,17 @@ class _AkkuKalkulatorState extends State<AkkuKalkulator> {
   String _fazis = "1 fázis";
   String _amper = "16A";
   double _celSzazalek = 80.0;
-  String _eredmeny = "Várom az adatokat...";
-  String _teljesitmeny = "- kW";
+  String _eredmeny = "0 óra 0 perc";
+  String _befejezesIdo = "--:--";
+  String _energiaMennyiseg = "0.00 kWh";
+  String _co2Megtakaritas = "0.00 kg"; // Új változó
+  Color _accentColor = Colors.greenAccent;
 
   void _szamoldKi() {
     double? jelenlegi = double.tryParse(_szazalekController.text.replaceFirst(',', '.'));
     double? kapacitas = double.tryParse(_kapacitasController.text.replaceFirst(',', '.'));
 
-    if (jelenlegi == null || kapacitas == null) {
-      setState(() => _eredmeny = "Hiba: Hibás számok!");
-      return;
-    }
+    if (jelenlegi == null || kapacitas == null) return;
 
     int fazisokSzama = _fazis == "1 fázis" ? 1 : 3;
     int amperErtek = int.parse(_amper.replaceAll('A', ''));
@@ -51,133 +47,234 @@ class _AkkuKalkulatorState extends State<AkkuKalkulator> {
     double bruttoKW = (230 * amperErtek * fazisokSzama) / 1000.0;
     double nettoKW = bruttoKW * 0.9;
 
+    setState(() {
+      if (_celSzazalek <= 80) _accentColor = Colors.greenAccent;
+      else if (_celSzazalek <= 95) _accentColor = Colors.blueAccent;
+      else _accentColor = Colors.amberAccent;
+    });
+
     if (jelenlegi >= _celSzazalek) {
       setState(() {
-        _teljesitmeny = "${nettoKW.toStringAsFixed(2)} kW";
-        _eredmeny = "A cél már teljesült!";
+        _eredmeny = "KÉSZ";
+        _befejezesIdo = "Most";
+        _energiaMennyiseg = "0.00 kWh";
+        _co2Megtakaritas = "0.00 kg";
       });
       return;
     }
 
     double hianyzoKwh = ((_celSzazalek - jelenlegi) / 100.0) * kapacitas;
     double idoOra = hianyzoKwh / nettoKW;
+    
+    // CO2 számítás: ~0.18 kg megtakarítás / betöltött kWh
+    double co2kg = hianyzoKwh * 0.18;
 
-    int h = idoOra.toInt();
-    int m = ((idoOra - h) * 60).round();
-    if (m == 60) { h++; m = 0; }
+    DateTime befejezes = DateTime.now().add(Duration(minutes: (idoOra * 60).round()));
 
     setState(() {
-      _teljesitmeny = "${nettoKW.toStringAsFixed(2)} kW";
+      int h = idoOra.toInt();
+      int m = ((idoOra - h) * 60).round();
       _eredmeny = "$h óra $m perc";
+      _befejezesIdo = DateFormat('HH:mm').format(befejezes);
+      _energiaMennyiseg = "${hianyzoKwh.toStringAsFixed(2)} kWh";
+      _co2Megtakaritas = "${co2kg.toStringAsFixed(2)} kg";
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            // Eredmény Kártya
-            Card(
-              child: Container(
-                padding: EdgeInsets.all(25),
-                width: double.infinity,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 50),
+          child: Column(
+            children: [
+              // Fő Eredmény Kártya
+              _buildGlassCard(
                 child: Column(
                   children: [
-                    Text("BECSÜLT TÖLTÉSI IDŐ", style: TextStyle(color: Colors.grey, fontSize: 12, letterSpacing: 1.5)),
+                    Text("TÖLTÉSI IDŐTARTAM", style: TextStyle(color: Colors.white60, fontSize: 12, letterSpacing: 2)),
+                    SizedBox(height: 15),
+                    Text(_eredmeny, style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold, color: _accentColor, shadows: [Shadow(color: _accentColor.withOpacity(0.5), blurRadius: 20)])),
                     SizedBox(height: 10),
-                    Text(_eredmeny, style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.blueAccent)),
-                    Divider(height: 30, color: Colors.grey[800]),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.bolt, color: Colors.amber, size: 20),
-                        SizedBox(width: 5),
-                        Text("Teljesítmény: $_teljesitmeny", style: TextStyle(color: Colors.grey[400])),
+                        Icon(Icons.access_time, size: 18, color: Colors.white60),
+                        SizedBox(width: 8),
+                        Text("Vége: ", style: TextStyle(color: Colors.white60)),
+                        Text(_befejezesIdo, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                      ],
+                    ),
+                    Divider(height: 40, color: Colors.white10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _infoTile("Energia", _energiaMennyiseg, Icons.ev_station),
+                        _infoTile("Cél", "${_celSzazalek.round()}%", Icons.flag),
                       ],
                     )
                   ],
                 ),
               ),
-            ),
-            SizedBox(height: 20),
-            
-            // Beviteli mezők kártyája
-            Card(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Column(
+              
+              SizedBox(height: 15),
+
+              // ÚJ: Környezetvédelmi kártya
+              _buildGlassCard(
+                color: Colors.green.withOpacity(0.1),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildInputLabel("Akku kapacitás (kWh)"),
-                    TextField(controller: _kapacitasController, textAlign: TextAlign.center, decoration: _inputDecoration(), keyboardType: TextInputType.number),
-                    SizedBox(height: 20),
-                    _buildInputLabel("Jelenlegi töltöttség (%)"),
-                    TextField(controller: _szazalekController, textAlign: TextAlign.center, decoration: _inputDecoration(), keyboardType: TextInputType.number),
-                    SizedBox(height: 20),
-                    Row(
+                    Icon(Icons.eco, color: Colors.greenAccent, size: 24),
+                    SizedBox(width: 15),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: Column(children: [
-                          _buildInputLabel("Fázis"),
-                          DropdownButton<String>(
-                            value: _fazis, isExpanded: true,
-                            onChanged: (val) => setState(() => _fazis = val!),
-                            items: ["1 fázis", "3 fázis"].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                          )
-                        ])),
-                        SizedBox(width: 20),
-                        Expanded(child: Column(children: [
-                          _buildInputLabel("Áramerősség"),
-                          DropdownButton<String>(
-                            value: _amper, isExpanded: true,
-                            onChanged: (val) => setState(() => _amper = val!),
-                            items: ["8A", "10A", "13A", "16A", "32A"].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                          )
-                        ])),
+                        Text("CO₂ MEGTAKARÍTÁS", style: TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                        Text(_co2Megtakaritas, style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                       ],
-                    ),
-                    SizedBox(height: 20),
-                    _buildInputLabel("Cél: $_celSzazalek%"),
-                    Slider(
-                      value: _celSzazalek, min: 50, max: 100, divisions: 10,
-                      label: "${_celSzazalek.round()}%",
-                      onChanged: (v) => setState(() => _celSzazalek = v),
                     ),
                   ],
                 ),
               ),
-            ),
-            SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: _szamoldKi,
-              child: Text("SZÁMÍTÁS", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
-                foregroundColor: Colors.white,
-                minimumSize: Size(double.infinity, 60),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+
+              SizedBox(height: 25),
+              _buildSectionTitle("AKKU ADATOK"),
+              _buildInputCard([
+                _buildTextField("Kapacitás (kWh)", _kapacitasController),
+                SizedBox(height: 15),
+                _buildTextField("Jelenlegi szint (%)", _szazalekController),
+              ]),
+              
+              SizedBox(height: 25),
+              _buildSectionTitle("TÖLTŐ BEÁLLÍTÁSA"),
+              _buildInputCard([
+                Row(
+                  children: [
+                    Expanded(child: _buildDropdown("Fázis", _fazis, ["1 fázis", "3 fázis"], (v) => setState(() => _fazis = v!))),
+                    SizedBox(width: 15),
+                    Expanded(child: _buildDropdown("Amper", _amper, ["8A", "10A", "13A", "16A", "32A"], (v) => setState(() => _amper = v!))),
+                  ],
+                ),
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Cél töltöttség", style: TextStyle(color: Colors.white60, fontSize: 13)),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                      decoration: BoxDecoration(color: _accentColor.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
+                      child: Text("${_celSzazalek.round()}%", style: TextStyle(color: _accentColor, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: _celSzazalek, min: 50, max: 100, divisions: 10,
+                  activeColor: _accentColor,
+                  onChanged: (v) => setState(() => _celSzazalek = v),
+                ),
+              ]),
+              
+              SizedBox(height: 40),
+              ElevatedButton(
+                onPressed: _szamoldKi,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _accentColor,
+                  foregroundColor: Colors.black87,
+                  minimumSize: Size(double.infinity, 65),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  elevation: 10,
+                ),
+                child: Text("SZÁMÍTÁS INDÍTÁSA", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildInputLabel(String label) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 8.0),
-      child: Text(label, style: TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.w500)),
+  // Segédmetódus az üveghatású kártyákhoz
+  Widget _buildGlassCard({required Widget child, Color? color}) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color ?? Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(25),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: child,
     );
   }
 
-  InputDecoration _inputDecoration() {
-    return InputDecoration(
-      filled: true,
-      fillColor: Colors.black26,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-      contentPadding: EdgeInsets.symmetric(vertical: 10),
+  Widget _infoTile(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.white38, size: 20),
+        SizedBox(height: 5),
+        Text(label, style: TextStyle(color: Colors.white38, fontSize: 11)),
+        Text(value, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: EdgeInsets.only(left: 10, bottom: 10),
+        child: Text(title, style: TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _buildInputCard(List<Widget> children) {
+    return Container(
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      textAlign: TextAlign.center,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.white38),
+        filled: true,
+        fillColor: Colors.black26,
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white10)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _accentColor)),
+      ),
+    );
+  }
+
+  Widget _buildDropdown(String label, String value, List<String> items, Function(String?) onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(color: Colors.white38, fontSize: 12)),
+        DropdownButton<String>(
+          value: value, isExpanded: true, underline: SizedBox(),
+          onChanged: onChanged,
+          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+        ),
+      ],
     );
   }
 }
