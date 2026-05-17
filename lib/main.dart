@@ -45,7 +45,7 @@ class _AkkuKalkulatorState extends State<AkkuKalkulator> {
     int amperErtek = int.parse(_amper.replaceAll('A', ''));
     
     double bruttoKW = (230 * amperErtek * fazisokSzama) / 1000.0;
-    double nettoKW = bruttoKW * 0.9;
+    double nettoKW = bruttoKW * 0.97;
 
     if (jelenlegi >= _celSzazalek) {
       setState(() {
